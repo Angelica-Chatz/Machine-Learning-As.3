@@ -1,0 +1,182 @@
+---
+title: "SBA2_R_HW3a"
+author: "Chatzimoschou Angeliki"
+date: "2016 M07 8"
+output: html_document
+---
+
+## Question 1
+
+```{r}
+set.seed(1)
+(v <- rbinom(10, 1, 0.75))
+```
+
+## Question 2
+
+```{r}
+sum(v)
+```
+
+## Question 3
+
+```{r}
+set.seed(1)
+
+# coin A
+matrix.A <- matrix(NA, nrow = 5, ncol = 10)
+for ( i in 1:5) {
+ matrix.A[i,] <- rbinom(10, 1, .75) 
+}
+
+# coin B
+matrix.B <- matrix(NA, nrow = 5, ncol = 10)
+for ( i in 1:5) {
+  matrix.B[i,] <- rbinom(10, 1, .5) 
+}
+
+# matrix M
+M <- rbind(matrix.A, matrix.B)
+```
+
+## Question 4
+
+```{r}
+counts <- apply(M, 1, sum)
+```
+
+## Question 5
+
+```{r}
+probs.A <- sum(counts[1:5])/(5*10)
+probs.B <- sum(counts[6:10])/(5*10)
+
+(probs <- c(probs.A, probs.B))
+```
+
+## Question 6
+
+```{r}
+coinLikelihood <- function(v, headsProb){
+  tmp <- dbinom(v, 1, headsProb)
+  return(prod(tmp))
+}
+```
+
+## Question 7
+
+```{r}
+v1 <- c(0,1,0,1,0,0,1,1)
+v2 <- c(1,1,1,1,0,0,1,1,1,0)
+v3 <- c(0,0,0,0,0,0,0)
+
+prob.vector <- seq(.05, 1, .05)
+
+
+likelihood.1 <- sapply(prob.vector, function(prob.vector) coinLikelihood(v1, prob.vector))
+likelihood.2 <- sapply(prob.vector, function(prob.vector) coinLikelihood(v2, prob.vector))
+likelihood.3 <- sapply(prob.vector, function(prob.vector) coinLikelihood(v3, prob.vector))
+
+
+plot(prob.vector, likelihood.1)
+plot(prob.vector, likelihood.2)
+plot(prob.vector, likelihood.3)
+```
+
+## Question 8
+
+```{r}
+coinEStep <- function(m, headsProbA, headsProbB){
+   rel.probs <- rep(NA, dim(m)[1])
+  for (i in 1:dim(m)[1]) {
+    rel.probs[i] <- coinLikelihood(m[i,], headsProbA)/
+      (coinLikelihood(m[i,], headsProbA) + coinLikelihood(m[i,], headsProbB))
+  }
+  return(rel.probs)
+}
+```
+
+## Question 9
+
+```{r}
+coinEStepB <- function(m, headsProbA, headsProbB){
+   rel.probs <- rep(NA, dim(m)[1])
+  for (i in 1:dim(m)[1]) {
+    rel.probs[i] <- coinLikelihood(m[i,], headsProbB)/
+      (coinLikelihood(m[i,], headsProbA) + coinLikelihood(m[i,], headsProbB))
+  }
+  return(rel.probs)
+}
+```
+
+## Question 10
+
+```{r}
+coinMStep <- function(m, rel.Probs.Coin.A){
+  updated.probs <- rep(NA, 2)
+  coin.A.sums <- rep(0, 2) 
+  coin.B.sums <- rep(0, 2)
+ 
+   for (i in 1:dim(m)[1]) {
+    
+    # Heads
+    coin.A.sums[1] <- coin.A.sums[1] + rel.Probs.Coin.A[i]*sum(m[i,])
+    coin.B.sums[1] <- coin.B.sums[1] + (1 - rel.Probs.Coin.A[i])*sum(m[i,])
+    
+    # Tails 
+    coin.A.sums[2] <- coin.A.sums[2] + rel.Probs.Coin.A[i]*(dim(m)[2] - sum(m[i,]))
+    coin.B.sums[2] <- coin.B.sums[2] + (1 - rel.Probs.Coin.A[i])*(dim(m)[2] - sum(m[i,]))
+  }
+  
+  updated.probs[1] <- coin.A.sums[1]/sum(coin.A.sums)
+  updated.probs[2] <- coin.B.sums[1]/sum(coin.B.sums)
+ 
+   names(updated.probs) <- c("Prob.A.updated", "Prob.B.updated")
+ 
+    return(updated.probs)
+}
+```
+
+## Question 11
+
+```{r}
+e.small.enough <- function(x, y, e){
+   if (abs(x-y) < e) tmp <-  TRUE 
+          else tmp <- FALSE
+          return(tmp)
+}
+```
+
+## Question 12
+
+```{r}
+coinTossEM <- function(m, coinProbsA, coinProbsB, e){
+  probs <- c(coinProbsA, coinProbsB)
+  probs.updated <- coinMStep(m , coinEStep(m, coinProbsA, coinProbsB))
+  rel.probs <- c(0,0)
+  
+  while ( e.small.enough(probs[1], probs.updated[1], e) == FALSE ) {
+  
+    rel.probs <- coinEStep(m, probs[1], probs[2])
+    probs <- probs.updated
+    probs.updated <- coinMStep(m,rel.probs)
+    
+  }
+  return(probs.updated)
+}
+```
+
+
+## Question 13
+
+```{r}
+coinTossEM(M,0.45,0.70,0.001)
+coinTossEM(M,0.50,0.90,0.0001)
+```
+
+##Question 14
+
+```{r}
+coinTossEM(M,0.45,0.45,0.001)
+coinTossEM(M,0.75,0.75,0.001)
+```
